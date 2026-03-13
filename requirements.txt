@@ -6,3 +6,5 @@ matplotlib>=3.8.0
 seaborn>=0.13.0
 shap>=0.45.0
 langdetect>=1.0.9
+PyYAML>=6.0.1
+tqdm>=4.66.0

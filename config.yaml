@@ -1,0 +1,58 @@
+generation:
+  human_input: data/processed/human_abstracts_min80.csv
+  output_csv: data/processed/llm_abstracts_v2.csv
+  output_jsonl: data/interim/llm_abstracts_v2.jsonl
+  prompt_file: prompts/factual_prompt.txt
+  prompt_type: factual
+  sample_size: 300
+  source_column: source_id
+  text_column: abstract
+  resume: true
+  strict_matrix: true
+
+models:
+  - name: llama-3.1-8b-instruct
+    backend: transformers
+    model_id: meta-llama/Llama-3.1-8B-Instruct
+    temperature: 0.4
+    top_p: 0.9
+    max_new_tokens: 450
+  - name: gemma-2-9b-it
+    backend: transformers
+    model_id: google/gemma-2-9b-it
+    temperature: 0.4
+    top_p: 0.9
+    max_new_tokens: 450
+  - name: qwen-2.5-7b-instruct
+    backend: transformers
+    model_id: Qwen/Qwen2.5-7B-Instruct
+    temperature: 0.4
+    top_p: 0.9
+    max_new_tokens: 450
+  - name: mistral-7b-instruct-v0.3
+    backend: transformers
+    model_id: mistralai/Mistral-7B-Instruct-v0.3
+    temperature: 0.4
+    top_p: 0.9
+    max_new_tokens: 450
+
+analysis:
+  human_input: data/processed/human_abstracts_min80.csv
+  llm_input: data/processed/llm_abstracts_v2.csv
+  output_dir: reports/results/v2
+  source_column: source_id
+  human_text_column: abstract
+  llm_text_column: generated_abstract
+  prompt_type: factual
+  models: []
+  run_binary: true
+  run_multiclass: true
+  cv_folds: 5
+  random_seed: 42
+  feature_sets:
+    - lexical
+    - syntactic
+    - combined
+    - writeprints
+    - stylometrix
+    - stanza

@@ -4,6 +4,13 @@ This project provides a reproducible pipeline for stylometric analysis of:
 - Human-written academic abstracts (Scopus export)
 - LLM-generated abstracts (Llama 3.1), matched by source paper
 
+## V2 (Config-Driven)
+The project now includes two main entrypoints:
+- `run_generation.py`: generate LLM abstracts from human abstracts using one or more models.
+- `run_analysis.py`: run feature extraction + CV robustness evaluation (binary and multiclass).
+
+Both are driven by `config.yaml`.
+
 The default main experiment is:
 - `human` vs `llm_factual` (balanced, grouped split by `source_id`)
 
@@ -116,3 +123,20 @@ Stored in `prompts/factual_prompt.txt`.
 ## Notes
 - Keep factual and opinion prompt experiments separate in reporting.
 - Do not mix `llm_factual` and `llm_opinion` into one LLM class for the main stylometry claim.
+
+## V2 Quick Start
+1. Edit `config.yaml` for your model list, sample size (`300`), and paths.
+2. Generate dataset:
+```powershell
+python run_generation.py --config config.yaml
+```
+3. Run analysis (feature-set comparisons + 5-fold group CV):
+```powershell
+python run_analysis.py --config config.yaml
+```
+
+Outputs are written under `reports/results/v2` by default.
+
+Multiclass task meaning:
+- A single classifier predicts one label among all classes:
+  - `human`, `llama-3.1-8b-instruct`, `gemma-2-9b-it`, `qwen-2.5-7b-instruct`, `mistral-7b-instruct-v0.3`.
