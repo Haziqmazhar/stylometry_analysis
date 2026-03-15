@@ -87,6 +87,34 @@ def maybe_load_existing(path: Path) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
+def load_existing_jsonl(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    rows: List[Dict] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return pd.DataFrame(rows)
+
+
+def persist_csv(rows: List[Dict], out_csv: Path, strict_matrix: bool, model_names: List[str]) -> None:
+    if not rows:
+        return
+    out = pd.DataFrame(rows).drop_duplicates(subset=["source_id", "model_name"], keep="last")
+    if strict_matrix and not out.empty:
+        wanted = set(model_names)
+        source_to_models = out.groupby("source_id")["model_name"].apply(lambda s: set(s.astype(str)))
+        keep_sources = [sid for sid, mods in source_to_models.items() if wanted.issubset(mods)]
+        out = out[out["source_id"].isin(keep_sources)].copy()
+    out.to_csv(out_csv, index=False)
+
+
 def source_already_done(existing: pd.DataFrame, source_id: str, model_names: List[str]) -> bool:
     if existing.empty:
         return False
@@ -127,7 +155,14 @@ def main():
     work[text_col] = work[text_col].astype(str).str.strip()
     work = work[work[text_col].str.len() > 0].head(n)
 
-    existing = maybe_load_existing(out_csv) if resume else pd.DataFrame()
+    if resume:
+        existing_csv = maybe_load_existing(out_csv)
+        existing_jsonl = load_existing_jsonl(out_jsonl)
+        existing = pd.concat([existing_csv, existing_jsonl], ignore_index=True) if not existing_csv.empty or not existing_jsonl.empty else pd.DataFrame()
+        if not existing.empty:
+            existing = existing.drop_duplicates(subset=["source_id", "model_name"], keep="last")
+    else:
+        existing = pd.DataFrame()
     model_names = [m["name"] for m in models]
 
     all_rows: List[Dict] = []
@@ -139,76 +174,82 @@ def main():
     generated_pairs = 0
     skipped_pairs = 0
 
-    with out_jsonl.open("a", encoding="utf-8") as f_jsonl:
-        existing_pairs = set()
-        if not existing.empty:
-            for _, r in existing.iterrows():
-                existing_pairs.add((str(r["source_id"]), str(r["model_name"])))
+    try:
+        with out_jsonl.open("a", encoding="utf-8") as f_jsonl:
+            existing_pairs = set()
+            if not existing.empty:
+                for _, r in existing.iterrows():
+                    existing_pairs.add((str(r["source_id"]), str(r["model_name"])))
 
-        for model_cfg in models:
-            backend = model_cfg.get("backend", "transformers").lower()
-            model_name = model_cfg["name"]
-            tok = mdl = None
-            if backend == "transformers":
-                print(f"Loading transformers model: {model_name} ({model_cfg['model_id']})")
-                tok, mdl = load_transformers_model(model_cfg)
-
-            for idx, (_, row) in enumerate(work.iterrows(), start=1):
-                source_id = str(row[source_col])
-                source_text = str(row[text_col])
-
-                if resume and (source_id, model_name) in existing_pairs:
-                    skipped_pairs += 1
-                    continue
-
-                user_prompt = build_user_prompt(base_prompt, source_text)
+            for model_cfg in models:
+                backend = model_cfg.get("backend", "transformers").lower()
+                model_name = model_cfg["name"]
+                tok = mdl = None
                 try:
                     if backend == "transformers":
-                        generated = generate_transformers(user_prompt, model_cfg, tok, mdl)
-                    elif backend == "ollama":
-                        generated = generate_ollama(user_prompt, model_cfg)
-                    else:
-                        raise ValueError(f"Unsupported backend: {backend}")
+                        print(f"Loading transformers model: {model_name} ({model_cfg['model_id']})")
+                        tok, mdl = load_transformers_model(model_cfg)
                 except Exception as e:
-                    failed_pairs += 1
-                    print(f"[{idx}/{len(work)}] FAILED source_id={source_id} model={model_name} error={e}")
+                    failed_pairs += len(work)
+                    print(f"FAILED model load model={model_name} error={e}")
+                    persist_csv(all_rows, out_csv, strict_matrix, model_names)
                     continue
 
-                if not generated:
-                    failed_pairs += 1
-                    print(f"[{idx}/{len(work)}] EMPTY source_id={source_id} model={model_name}")
-                    continue
+                for idx, (_, row) in enumerate(work.iterrows(), start=1):
+                    source_id = str(row[source_col])
+                    source_text = str(row[text_col])
 
-                rec = {
-                    "source_id": source_id,
-                    "model_name": model_name,
-                    "model_id": model_cfg["model_id"],
-                    "backend": backend,
-                    "prompt_type": prompt_type,
-                    "generated_abstract": generated,
-                    "temperature": float(model_cfg.get("temperature", 0.4)),
-                    "top_p": float(model_cfg.get("top_p", 0.9)),
-                }
-                all_rows.append(rec)
-                f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                generated_pairs += 1
+                    if resume and (source_id, model_name) in existing_pairs:
+                        skipped_pairs += 1
+                        continue
 
-                elapsed = time.time() - started
-                print(
-                    f"[{idx}/{len(work)}][{model_name}] generated_pairs={generated_pairs} "
-                    f"failed_pairs={failed_pairs} skipped_pairs={skipped_pairs} elapsed={elapsed:.1f}s"
-                )
+                    user_prompt = build_user_prompt(base_prompt, source_text)
+                    try:
+                        if backend == "transformers":
+                            generated = generate_transformers(user_prompt, model_cfg, tok, mdl)
+                        elif backend == "ollama":
+                            generated = generate_ollama(user_prompt, model_cfg)
+                        else:
+                            raise ValueError(f"Unsupported backend: {backend}")
+                    except Exception as e:
+                        failed_pairs += 1
+                        print(f"[{idx}/{len(work)}] FAILED source_id={source_id} model={model_name} error={e}")
+                        persist_csv(all_rows, out_csv, strict_matrix, model_names)
+                        continue
 
-            del tok, mdl
+                    if not generated:
+                        failed_pairs += 1
+                        print(f"[{idx}/{len(work)}] EMPTY source_id={source_id} model={model_name}")
+                        persist_csv(all_rows, out_csv, strict_matrix, model_names)
+                        continue
 
-    out = pd.DataFrame(all_rows).drop_duplicates(subset=["source_id", "model_name"], keep="last")
-    if strict_matrix and not out.empty:
-        wanted = set(model_names)
-        source_to_models = out.groupby("source_id")["model_name"].apply(lambda s: set(s.astype(str)))
-        keep_sources = [sid for sid, mods in source_to_models.items() if wanted.issubset(mods)]
-        out = out[out["source_id"].isin(keep_sources)].copy()
+                    rec = {
+                        "source_id": source_id,
+                        "model_name": model_name,
+                        "model_id": model_cfg["model_id"],
+                        "backend": backend,
+                        "prompt_type": prompt_type,
+                        "generated_abstract": generated,
+                        "temperature": float(model_cfg.get("temperature", 0.4)),
+                        "top_p": float(model_cfg.get("top_p", 0.9)),
+                    }
+                    all_rows.append(rec)
+                    f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    f_jsonl.flush()
+                    persist_csv(all_rows, out_csv, strict_matrix, model_names)
+                    generated_pairs += 1
 
-    out.to_csv(out_csv, index=False)
+                    elapsed = time.time() - started
+                    print(
+                        f"[{idx}/{len(work)}][{model_name}] generated_pairs={generated_pairs} "
+                        f"failed_pairs={failed_pairs} skipped_pairs={skipped_pairs} elapsed={elapsed:.1f}s"
+                    )
+
+                del tok, mdl
+    finally:
+        persist_csv(all_rows, out_csv, strict_matrix, model_names)
+
+    out = pd.read_csv(out_csv) if out_csv.exists() else pd.DataFrame()
     total_elapsed = time.time() - started
     h = int(total_elapsed // 3600)
     m = int((total_elapsed % 3600) // 60)
