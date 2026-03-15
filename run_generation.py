@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 
 import pandas as pd
 import yaml
+from pandas.errors import EmptyDataError
 
 
 def load_config(path: Path) -> Dict:
@@ -84,7 +85,10 @@ def generate_ollama(prompt: str, model_cfg: Dict, host: str = "http://localhost:
 def maybe_load_existing(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
-    return pd.read_csv(path)
+    try:
+        return pd.read_csv(path)
+    except EmptyDataError:
+        return pd.DataFrame()
 
 
 def load_existing_jsonl(path: Path) -> pd.DataFrame:
