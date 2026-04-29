@@ -40,8 +40,6 @@ data/
 prompts/
   factual_prompt.txt
 reports/
-  IJC319_report_second_draft.tex
-  methodology_template.md
   results/
     factual/
     v2/
