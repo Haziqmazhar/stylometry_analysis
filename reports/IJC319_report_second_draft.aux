@@ -1,0 +1,79 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{4}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Background}{4}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Aims and Objectives}{5}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Literature Review}{5}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Stylometry as a Field}{5}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}LLM-Generated Text and Detection}{6}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Feature Design in Stylometric Classification}{7}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Gap Filled by This Study}{8}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}The Research Questions}{8}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methods Plan}{9}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Data Collection Procedure}{9}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Analysis Methods}{11}{subsection.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Exact feature contents for each configured feature set used in the analysis.}}{12}{table.1}\protected@file@percent }
+\newlabel{tab:feature-set-inventory}{{1}{12}{Exact feature contents for each configured feature set used in the analysis}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Digital Artefact Construction}{13}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Ethical Issues}{13}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Analysis}{14}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Available Evidence and Corpus Balance}{14}{subsection.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Class balance in \texttt  {master\_with\_features.csv}. The analysed pilot subset is balanced across the human class and the four LLM classes represented in the feature table.}}{15}{figure.1}\protected@file@percent }
+\newlabel{fig:class-balance}{{1}{15}{Class balance in \texttt {master\_with\_features.csv}. The analysed pilot subset is balanced across the human class and the four LLM classes represented in the feature table}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Binary Human-versus-Model Performance Across Feature Families}{15}{subsection.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Best saved binary configuration for each LLM model, ranked by mean F1-score.}}{16}{table.2}\protected@file@percent }
+\newlabel{tab:binary-best}{{2}{16}{Best saved binary configuration for each LLM model, ranked by mean F1-score}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Best binary mean F1-score by feature set and model. Combined and syntactic feature sets dominate the strongest human-versus-model comparisons, especially for Gemma and Llama.}}{16}{figure.2}\protected@file@percent }
+\newlabel{fig:binary-best-f1}{{2}{16}{Best binary mean F1-score by feature set and model. Combined and syntactic feature sets dominate the strongest human-versus-model comparisons, especially for Gemma and Llama}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mean binary F1-score by feature set and estimator across the saved binary tasks. Horizontal layout keeps all feature-family labels readable.}}{17}{figure.3}\protected@file@percent }
+\newlabel{fig:binary-f1-by-feature}{{3}{17}{Mean binary F1-score by feature set and estimator across the saved binary tasks. Horizontal layout keeps all feature-family labels readable}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}What the Feature Comparison Suggests}{17}{subsection.4.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Fold-level F1-score distribution across binary feature sets and estimators. Lexical and stanza configurations are generally weaker and less reliable than the strongest combined and syntactic settings.}}{18}{figure.4}\protected@file@percent }
+\newlabel{fig:f1-fold-distribution}{{4}{18}{Fold-level F1-score distribution across binary feature sets and estimators. Lexical and stanza configurations are generally weaker and less reliable than the strongest combined and syntactic settings}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Multiclass Attribution Performance}{18}{subsection.4.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Multiclass mean macro-F1 by feature set and estimator. Combined and syntactic configurations are clearly stronger than lexical, writeprints, stylometrix, and stanza-based alternatives.}}{19}{figure.5}\protected@file@percent }
+\newlabel{fig:multiclass-f1}{{5}{19}{Multiclass mean macro-F1 by feature set and estimator. Combined and syntactic configurations are clearly stronger than lexical, writeprints, stylometrix, and stanza-based alternatives}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Semantic Overlap Between Human and Generated Abstracts}{19}{subsection.4.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Mean semantic-overlap scores by model. METEOR is a simplified in-project implementation rather than the official toolkit version.}}{19}{table.3}\protected@file@percent }
+\newlabel{tab:semantic-summary}{{3}{19}{Mean semantic-overlap scores by model. METEOR is a simplified in-project implementation rather than the official toolkit version}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Analysis Result Summary}{20}{subsection.4.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion and Conclusions}{20}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Answers to the Research Questions}{20}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Conclusions (Take-away Messages)}{21}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Personal Lessons Learned (What I Personally Gained from the Project)}{22}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}References}{22}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Appendix}{24}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Ethical Approval Form}{24}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Additional Supporting Information}{25}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.2.1}Configuration Evidence}{25}{subsubsection.7.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Configuration screenshot showing the four LLM families and the analysis settings used in the reproducible pipeline.}}{25}{figure.6}\protected@file@percent }
+\newlabel{fig:appendix-config}{{6}{25}{Configuration screenshot showing the four LLM families and the analysis settings used in the reproducible pipeline}{figure.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Generation configuration for the four LLM families. The shared decoding settings help keep the comparison focused on model and style differences rather than deliberately different sampling parameters.}}{26}{table.4}\protected@file@percent }
+\newlabel{tab:appendix-model-config}{{4}{26}{Generation configuration for the four LLM families. The shared decoding settings help keep the comparison focused on model and style differences rather than deliberately different sampling parameters}{table.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Analysis configuration used to generate the main result files.}}{26}{table.5}\protected@file@percent }
+\newlabel{tab:appendix-analysis-config}{{5}{26}{Analysis configuration used to generate the main result files}{table.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.2.2}Supplementary Result Figures}{26}{subsubsection.7.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Supplementary binary mean accuracy by feature set and estimator. This complements the F1-focused figures in the main report.}}{26}{figure.7}\protected@file@percent }
+\newlabel{fig:appendix-accuracy-feature}{{7}{26}{Supplementary binary mean accuracy by feature set and estimator. This complements the F1-focused figures in the main report}{figure.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Supplementary fold-level binary accuracy distribution across feature sets and estimators.}}{27}{figure.8}\protected@file@percent }
+\newlabel{fig:appendix-accuracy-folds}{{8}{27}{Supplementary fold-level binary accuracy distribution across feature sets and estimators}{figure.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Supplementary binary ROC-AUC by feature set and estimator, showing separability across thresholds rather than only hard-label performance.}}{27}{figure.9}\protected@file@percent }
+\newlabel{fig:appendix-roc-feature}{{9}{27}{Supplementary binary ROC-AUC by feature set and estimator, showing separability across thresholds rather than only hard-label performance}{figure.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Supplementary multiclass mean accuracy by feature set and estimator. This supports the multiclass macro-F1 figure in the main report.}}{28}{figure.10}\protected@file@percent }
+\newlabel{fig:appendix-multiclass-accuracy}{{10}{28}{Supplementary multiclass mean accuracy by feature set and estimator. This supports the multiclass macro-F1 figure in the main report}{figure.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Supplementary Gemma binary accuracy heatmap across feature sets and estimators.}}{28}{figure.11}\protected@file@percent }
+\newlabel{fig:appendix-gemma-heatmap}{{11}{28}{Supplementary Gemma binary accuracy heatmap across feature sets and estimators}{figure.11}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.2.3}Supplementary Tables}{29}{subsubsection.7.2.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Full multiclass summary by feature family and estimator. This table supports the main multiclass discussion while keeping the body of the report focused on the strongest results.}}{29}{table.6}\protected@file@percent }
+\newlabel{tab:appendix-multiclass-full}{{6}{29}{Full multiclass summary by feature family and estimator. This table supports the main multiclass discussion while keeping the body of the report focused on the strongest results}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Additional factual-prompt baseline metrics retained as supporting evidence. These outputs are not part of the main v2 comparison.}}{29}{table.7}\protected@file@percent }
+\newlabel{tab:appendix-factual-metrics}{{7}{29}{Additional factual-prompt baseline metrics retained as supporting evidence. These outputs are not part of the main v2 comparison}{table.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Confusion matrix for the saved factual-prompt baseline model. This provides a compact error profile for the supporting baseline run.}}{29}{table.8}\protected@file@percent }
+\newlabel{tab:appendix-factual-confusion}{{8}{29}{Confusion matrix for the saved factual-prompt baseline model. This provides a compact error profile for the supporting baseline run}{table.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Top ten SHAP features from the supporting factual baseline. The strongest values are mainly sentence-length, word-length, function-word, and punctuation features, which is consistent with the report's emphasis on structural stylistic evidence.}}{30}{table.9}\protected@file@percent }
+\newlabel{tab:appendix-shap-top}{{9}{30}{Top ten SHAP features from the supporting factual baseline. The strongest values are mainly sentence-length, word-length, function-word, and punctuation features, which is consistent with the report's emphasis on structural stylistic evidence}{table.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Key supplementary result files retained for reproducibility and auditability.}}{30}{table.10}\protected@file@percent }
+\newlabel{tab:appendix-output-files}{{10}{30}{Key supplementary result files retained for reproducibility and auditability}{table.10}{}}
+\gdef \@abspage@last{31}

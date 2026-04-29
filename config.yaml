@@ -4,7 +4,7 @@ generation:
   output_jsonl: data/interim/llm_abstracts_v2.jsonl
   prompt_file: prompts/factual_prompt.txt
   prompt_type: factual
-  sample_size: 300
+  sample_size: 200
   source_column: source_id
   text_column: abstract
   resume: true

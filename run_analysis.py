@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -27,9 +28,180 @@ from src.feature_engine_v2 import (
 )
 
 
+TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
+
+
 def load_config(path: Path) -> Dict:
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def require_columns(df: pd.DataFrame, required: List[str], label: str) -> None:
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns in {label}: {missing}")
+
+
+def tokenize_for_overlap(text: str) -> List[str]:
+    return TOKEN_RE.findall(str(text).lower())
+
+
+def _ngram_counts(tokens: List[str], n: int) -> Dict[tuple, int]:
+    counts: Dict[tuple, int] = {}
+    if n <= 0 or len(tokens) < n:
+        return counts
+    for i in range(len(tokens) - n + 1):
+        gram = tuple(tokens[i : i + n])
+        counts[gram] = counts.get(gram, 0) + 1
+    return counts
+
+
+def rouge_n_f1(reference: str, candidate: str, n: int = 1) -> float:
+    ref_counts = _ngram_counts(tokenize_for_overlap(reference), n)
+    cand_counts = _ngram_counts(tokenize_for_overlap(candidate), n)
+    if not ref_counts or not cand_counts:
+        return 0.0
+    overlap = 0
+    for gram, count in cand_counts.items():
+        overlap += min(count, ref_counts.get(gram, 0))
+    ref_total = sum(ref_counts.values())
+    cand_total = sum(cand_counts.values())
+    if ref_total == 0 or cand_total == 0 or overlap == 0:
+        return 0.0
+    precision = overlap / cand_total
+    recall = overlap / ref_total
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
+def _lcs_length(a: List[str], b: List[str]) -> int:
+    if not a or not b:
+        return 0
+    prev = [0] * (len(b) + 1)
+    for i in range(1, len(a) + 1):
+        curr = [0] * (len(b) + 1)
+        ai = a[i - 1]
+        for j in range(1, len(b) + 1):
+            if ai == b[j - 1]:
+                curr[j] = prev[j - 1] + 1
+            else:
+                curr[j] = max(prev[j], curr[j - 1])
+        prev = curr
+    return prev[-1]
+
+
+def rouge_l_f1(reference: str, candidate: str) -> float:
+    ref_tokens = tokenize_for_overlap(reference)
+    cand_tokens = tokenize_for_overlap(candidate)
+    if not ref_tokens or not cand_tokens:
+        return 0.0
+    lcs = _lcs_length(ref_tokens, cand_tokens)
+    if lcs == 0:
+        return 0.0
+    precision = lcs / len(cand_tokens)
+    recall = lcs / len(ref_tokens)
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
+def meteor_score_simple(reference: str, candidate: str) -> float:
+    ref_tokens = tokenize_for_overlap(reference)
+    cand_tokens = tokenize_for_overlap(candidate)
+    if not ref_tokens or not cand_tokens:
+        return 0.0
+
+    ref_positions: Dict[str, List[int]] = {}
+    for idx, tok in enumerate(ref_tokens):
+        ref_positions.setdefault(tok, []).append(idx)
+
+    matches = 0
+    chunks = 0
+    last_pos = -1
+    used_ref_positions = set()
+
+    for tok in cand_tokens:
+        positions = ref_positions.get(tok, [])
+        chosen = None
+        for pos in positions:
+            if pos not in used_ref_positions and pos > last_pos:
+                chosen = pos
+                break
+        if chosen is None:
+            for pos in positions:
+                if pos not in used_ref_positions:
+                    chosen = pos
+                    break
+        if chosen is None:
+            continue
+        used_ref_positions.add(chosen)
+        matches += 1
+        if last_pos == -1 or chosen != last_pos + 1:
+            chunks += 1
+        last_pos = chosen
+
+    if matches == 0:
+        return 0.0
+
+    precision = matches / len(cand_tokens)
+    recall = matches / len(ref_tokens)
+    if precision == 0 or recall == 0:
+        return 0.0
+
+    f_mean = (10 * precision * recall) / (recall + 9 * precision)
+    penalty = 0.5 * ((chunks / matches) ** 3) if matches > 0 else 0.0
+    return f_mean * (1 - penalty)
+
+
+def evaluate_semantic_overlap(cfg: Dict) -> pd.DataFrame:
+    human = pd.read_csv(cfg["human_input"])
+    llm = pd.read_csv(cfg["llm_input"])
+    source_col = cfg.get("source_column", "source_id")
+    htext = cfg.get("human_text_column", "abstract")
+    ltext = cfg.get("llm_text_column", "generated_abstract")
+    prompt_type = cfg.get("prompt_type", "factual")
+    require_columns(human, [source_col, htext], str(cfg["human_input"]))
+    require_columns(llm, [source_col, "model_name", "prompt_type", ltext], str(cfg["llm_input"]))
+
+    llm = llm[llm["prompt_type"].astype(str).str.lower() == prompt_type.lower()].copy()
+    keep_models = cfg.get("models", []) or sorted(llm["model_name"].dropna().astype(str).unique().tolist())
+    llm = llm[llm["model_name"].astype(str).isin(keep_models)].copy()
+
+    human = human[[source_col, htext]].dropna().copy()
+    human = human.rename(columns={source_col: "source_id", htext: "reference_text"})
+    human["source_id"] = human["source_id"].astype(str)
+    human = human.drop_duplicates(subset=["source_id"])
+
+    llm = llm[[source_col, "model_name", ltext, "prompt_type"]].dropna().copy()
+    llm = llm.rename(columns={source_col: "source_id", ltext: "candidate_text"})
+    llm["source_id"] = llm["source_id"].astype(str)
+    llm = llm.drop_duplicates(subset=["source_id", "model_name"], keep="last")
+
+    merged = human.merge(llm, on="source_id", how="inner")
+    if merged.empty:
+        return pd.DataFrame()
+
+    merged["rouge1_f1"] = merged.apply(
+        lambda r: rouge_n_f1(r["reference_text"], r["candidate_text"], n=1), axis=1
+    )
+    merged["rouge2_f1"] = merged.apply(
+        lambda r: rouge_n_f1(r["reference_text"], r["candidate_text"], n=2), axis=1
+    )
+    merged["rougeL_f1"] = merged.apply(lambda r: rouge_l_f1(r["reference_text"], r["candidate_text"]), axis=1)
+    merged["meteor"] = merged.apply(lambda r: meteor_score_simple(r["reference_text"], r["candidate_text"]), axis=1)
+    merged["reference_tokens"] = merged["reference_text"].map(lambda t: len(tokenize_for_overlap(t)))
+    merged["candidate_tokens"] = merged["candidate_text"].map(lambda t: len(tokenize_for_overlap(t)))
+    return merged
+
+
+def summarize_semantic_overlap(pair_scores: pd.DataFrame) -> pd.DataFrame:
+    if pair_scores.empty:
+        return pd.DataFrame()
+    metrics = ["rouge1_f1", "rouge2_f1", "rougeL_f1", "meteor", "reference_tokens", "candidate_tokens"]
+    grouped = pair_scores.groupby("model_name")[metrics].agg(["mean", "std"]).reset_index()
+    grouped.columns = ["model_name"] + [f"{metric}_{stat}" for metric, stat in grouped.columns.tolist()[1:]]
+    return grouped.sort_values("model_name").reset_index(drop=True)
 
 
 def build_master_dataset(cfg: Dict) -> pd.DataFrame:
@@ -39,6 +211,8 @@ def build_master_dataset(cfg: Dict) -> pd.DataFrame:
     htext = cfg.get("human_text_column", "abstract")
     ltext = cfg.get("llm_text_column", "generated_abstract")
     prompt_type = cfg.get("prompt_type", "factual")
+    require_columns(human, [source_col, htext], str(cfg["human_input"]))
+    require_columns(llm, [source_col, "model_name", "prompt_type", ltext], str(cfg["llm_input"]))
 
     human_rows = human[[source_col, htext]].copy()
     human_rows = human_rows.rename(columns={htext: "text", source_col: "source_id"})
@@ -96,7 +270,7 @@ def evaluate_binary_cv(df: pd.DataFrame, feature_cols: List[str], folds: int, se
         rf = RandomForestClassifier(
             n_estimators=500,
             random_state=seed,
-            n_jobs=-1,
+            n_jobs=1,
             class_weight="balanced",
         )
 
@@ -135,13 +309,13 @@ def evaluate_multiclass_cv(df: pd.DataFrame, feature_cols: List[str], folds: int
         lr = Pipeline(
             [
                 ("scaler", StandardScaler()),
-                ("clf", LogisticRegression(max_iter=3000, random_state=seed, multi_class="auto")),
+                ("clf", LogisticRegression(max_iter=3000, random_state=seed)),
             ]
         )
         rf = RandomForestClassifier(
             n_estimators=700,
             random_state=seed,
-            n_jobs=-1,
+            n_jobs=1,
             class_weight="balanced_subsample",
         )
 
@@ -191,8 +365,17 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     master = build_master_dataset(acfg)
+    if master.empty:
+        raise ValueError("No source-matched records were available for analysis. Check inputs, models, and prompt_type.")
     master = build_feature_table(master, text_col="text")
     master.to_csv(out_dir / "master_with_features.csv", index=False)
+
+    if acfg.get("run_semantic_eval", True):
+        semantic_pairs = evaluate_semantic_overlap(acfg)
+        if not semantic_pairs.empty:
+            semantic_pairs.to_csv(out_dir / "semantic_pair_scores.csv", index=False)
+            semantic_summary = summarize_semantic_overlap(semantic_pairs)
+            semantic_summary.to_csv(out_dir / "summary_semantic.csv", index=False)
 
     meta_cols = {"source_id", "text", "author_label", "model_name"}
     all_feature_cols = [c for c in master.columns if c not in meta_cols]
@@ -272,6 +455,7 @@ def main():
                 "feature_sets": feature_sets,
                 "binary_rows": len(binary_summary),
                 "multiclass_rows": len(multiclass_summary),
+                "semantic_eval_enabled": bool(acfg.get("run_semantic_eval", True)),
             },
             f,
             indent=2,

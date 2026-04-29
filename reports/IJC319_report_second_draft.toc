@@ -1,0 +1,32 @@
+\contentsline {section}{\numberline {1}Introduction}{4}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Background}{4}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Aims and Objectives}{5}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Literature Review}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Stylometry as a Field}{5}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}LLM-Generated Text and Detection}{6}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Feature Design in Stylometric Classification}{7}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Gap Filled by This Study}{8}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}The Research Questions}{8}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Methods Plan}{9}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Data Collection Procedure}{9}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Analysis Methods}{11}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Digital Artefact Construction}{13}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Ethical Issues}{13}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Analysis}{14}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Available Evidence and Corpus Balance}{14}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Binary Human-versus-Model Performance Across Feature Families}{15}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}What the Feature Comparison Suggests}{17}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Multiclass Attribution Performance}{18}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Semantic Overlap Between Human and Generated Abstracts}{19}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Analysis Result Summary}{20}{subsection.4.6}%
+\contentsline {section}{\numberline {5}Discussion and Conclusions}{20}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Answers to the Research Questions}{20}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Conclusions (Take-away Messages)}{21}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Personal Lessons Learned (What I Personally Gained from the Project)}{22}{subsection.5.3}%
+\contentsline {section}{\numberline {6}References}{22}{section.6}%
+\contentsline {section}{\numberline {7}Appendix}{24}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Ethical Approval Form}{24}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Additional Supporting Information}{25}{subsection.7.2}%
+\contentsline {subsubsection}{\numberline {7.2.1}Configuration Evidence}{25}{subsubsection.7.2.1}%
+\contentsline {subsubsection}{\numberline {7.2.2}Supplementary Result Figures}{26}{subsubsection.7.2.2}%
+\contentsline {subsubsection}{\numberline {7.2.3}Supplementary Tables}{29}{subsubsection.7.2.3}%

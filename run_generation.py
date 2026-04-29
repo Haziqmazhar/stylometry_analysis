@@ -2,7 +2,7 @@ import argparse
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import pandas as pd
 import yaml
@@ -107,6 +107,25 @@ def load_existing_jsonl(path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def model_slug(model_name: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in model_name)
+
+
+def per_model_paths(base_csv: Path, base_jsonl: Path, model_name: str) -> Tuple[Path, Path]:
+    slug = model_slug(model_name)
+    csv_dir = base_csv.parent / "per_model"
+    jsonl_dir = base_jsonl.parent / "per_model"
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    jsonl_dir.mkdir(parents=True, exist_ok=True)
+    return csv_dir / f"{slug}.csv", jsonl_dir / f"{slug}.jsonl"
+
+
+def require_columns(df: pd.DataFrame, required: List[str], label: str) -> None:
+    missing = [col for col in required if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns in {label}: {missing}")
+
+
 def persist_csv(rows: List[Dict], out_csv: Path, strict_matrix: bool, model_names: List[str]) -> None:
     if not rows:
         return
@@ -119,14 +138,29 @@ def persist_csv(rows: List[Dict], out_csv: Path, strict_matrix: bool, model_name
     out.to_csv(out_csv, index=False)
 
 
-def source_already_done(existing: pd.DataFrame, source_id: str, model_names: List[str]) -> bool:
-    if existing.empty:
-        return False
-    rows = existing[existing["source_id"] == source_id]
-    if rows.empty:
-        return False
-    have = set(rows["model_name"].astype(str))
-    return all(m in have for m in model_names)
+def append_json_record(handle, record: Dict) -> None:
+    handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    handle.flush()
+
+
+def append_generation_record(
+    record: Dict,
+    all_rows: List[Dict],
+    global_jsonl_handle,
+    model_jsonl_handle,
+    out_csv: Path,
+    strict_matrix: bool,
+    model_names: List[str],
+    model_csv: Path,
+    per_model_rows: List[Dict],
+) -> List[Dict]:
+    all_rows.append(record)
+    append_json_record(global_jsonl_handle, record)
+    append_json_record(model_jsonl_handle, record)
+    persist_csv(all_rows, out_csv, strict_matrix, model_names)
+    per_model_rows.append(record)
+    persist_csv(per_model_rows, model_csv, False, [record["model_name"]])
+    return per_model_rows
 
 
 def main():
@@ -148,6 +182,7 @@ def main():
     human = pd.read_csv(human_path)
     source_col = gcfg.get("source_column", "source_id")
     text_col = gcfg.get("text_column", "abstract")
+    require_columns(human, [source_col, text_col], str(human_path))
     n = int(gcfg.get("sample_size", 300))
     resume = bool(gcfg.get("resume", True))
     strict_matrix = bool(gcfg.get("strict_matrix", True))
@@ -164,10 +199,12 @@ def main():
         existing_jsonl = load_existing_jsonl(out_jsonl)
         existing = pd.concat([existing_csv, existing_jsonl], ignore_index=True) if not existing_csv.empty or not existing_jsonl.empty else pd.DataFrame()
         if not existing.empty:
+            require_columns(existing, ["source_id", "model_name"], f"{out_csv} / {out_jsonl}")
             existing = existing.drop_duplicates(subset=["source_id", "model_name"], keep="last")
     else:
         existing = pd.DataFrame()
     model_names = [m["name"] for m in models]
+    per_model_files = {m["name"]: per_model_paths(out_csv, out_jsonl, m["name"]) for m in models}
 
     all_rows: List[Dict] = []
     if not existing.empty:
@@ -180,7 +217,7 @@ def main():
 
     try:
         with out_jsonl.open("a", encoding="utf-8") as f_jsonl:
-            existing_pairs = set()
+            existing_pairs: Set[Tuple[str, str]] = set()
             if not existing.empty:
                 for _, r in existing.iterrows():
                     existing_pairs.add((str(r["source_id"]), str(r["model_name"])))
@@ -188,7 +225,18 @@ def main():
             for model_cfg in models:
                 backend = model_cfg.get("backend", "transformers").lower()
                 model_name = model_cfg["name"]
+                model_csv, model_jsonl = per_model_files[model_name]
                 tok = mdl = None
+                per_model_existing = pd.concat(
+                    [maybe_load_existing(model_csv), load_existing_jsonl(model_jsonl)],
+                    ignore_index=True,
+                )
+                if not per_model_existing.empty:
+                    require_columns(per_model_existing, ["source_id", "model_name"], f"{model_csv} / {model_jsonl}")
+                    per_model_existing = per_model_existing.drop_duplicates(
+                        subset=["source_id", "model_name"], keep="last"
+                    )
+                per_model_rows = per_model_existing.to_dict(orient="records") if not per_model_existing.empty else []
                 try:
                     if backend == "transformers":
                         print(f"Loading transformers model: {model_name} ({model_cfg['model_id']})")
@@ -199,55 +247,64 @@ def main():
                     persist_csv(all_rows, out_csv, strict_matrix, model_names)
                     continue
 
-                for idx, (_, row) in enumerate(work.iterrows(), start=1):
-                    source_id = str(row[source_col])
-                    source_text = str(row[text_col])
+                with model_jsonl.open("a", encoding="utf-8") as f_model_jsonl:
+                    for idx, (_, row) in enumerate(work.iterrows(), start=1):
+                        source_id = str(row[source_col])
+                        source_text = str(row[text_col])
 
-                    if resume and (source_id, model_name) in existing_pairs:
-                        skipped_pairs += 1
-                        continue
+                        if resume and (source_id, model_name) in existing_pairs:
+                            skipped_pairs += 1
+                            continue
 
-                    user_prompt = build_user_prompt(base_prompt, source_text)
-                    try:
-                        if backend == "transformers":
-                            generated = generate_transformers(user_prompt, model_cfg, tok, mdl)
-                        elif backend == "ollama":
-                            generated = generate_ollama(user_prompt, model_cfg)
-                        else:
-                            raise ValueError(f"Unsupported backend: {backend}")
-                    except Exception as e:
-                        failed_pairs += 1
-                        print(f"[{idx}/{len(work)}] FAILED source_id={source_id} model={model_name} error={e}")
-                        persist_csv(all_rows, out_csv, strict_matrix, model_names)
-                        continue
+                        user_prompt = build_user_prompt(base_prompt, source_text)
+                        try:
+                            if backend == "transformers":
+                                generated = generate_transformers(user_prompt, model_cfg, tok, mdl)
+                            elif backend == "ollama":
+                                generated = generate_ollama(user_prompt, model_cfg)
+                            else:
+                                raise ValueError(f"Unsupported backend: {backend}")
+                        except Exception as e:
+                            failed_pairs += 1
+                            print(f"[{idx}/{len(work)}] FAILED source_id={source_id} model={model_name} error={e}")
+                            persist_csv(all_rows, out_csv, strict_matrix, model_names)
+                            continue
 
-                    if not generated:
-                        failed_pairs += 1
-                        print(f"[{idx}/{len(work)}] EMPTY source_id={source_id} model={model_name}")
-                        persist_csv(all_rows, out_csv, strict_matrix, model_names)
-                        continue
+                        if not generated:
+                            failed_pairs += 1
+                            print(f"[{idx}/{len(work)}] EMPTY source_id={source_id} model={model_name}")
+                            persist_csv(all_rows, out_csv, strict_matrix, model_names)
+                            continue
 
-                    rec = {
-                        "source_id": source_id,
-                        "model_name": model_name,
-                        "model_id": model_cfg["model_id"],
-                        "backend": backend,
-                        "prompt_type": prompt_type,
-                        "generated_abstract": generated,
-                        "temperature": float(model_cfg.get("temperature", 0.4)),
-                        "top_p": float(model_cfg.get("top_p", 0.9)),
-                    }
-                    all_rows.append(rec)
-                    f_jsonl.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                    f_jsonl.flush()
-                    persist_csv(all_rows, out_csv, strict_matrix, model_names)
-                    generated_pairs += 1
+                        rec = {
+                            "source_id": source_id,
+                            "model_name": model_name,
+                            "model_id": model_cfg["model_id"],
+                            "backend": backend,
+                            "prompt_type": prompt_type,
+                            "generated_abstract": generated,
+                            "temperature": float(model_cfg.get("temperature", 0.4)),
+                            "top_p": float(model_cfg.get("top_p", 0.9)),
+                        }
+                        per_model_rows = append_generation_record(
+                            record=rec,
+                            all_rows=all_rows,
+                            global_jsonl_handle=f_jsonl,
+                            model_jsonl_handle=f_model_jsonl,
+                            out_csv=out_csv,
+                            strict_matrix=strict_matrix,
+                            model_names=model_names,
+                            model_csv=model_csv,
+                            per_model_rows=per_model_rows,
+                        )
+                        existing_pairs.add((source_id, model_name))
+                        generated_pairs += 1
 
-                    elapsed = time.time() - started
-                    print(
-                        f"[{idx}/{len(work)}][{model_name}] generated_pairs={generated_pairs} "
-                        f"failed_pairs={failed_pairs} skipped_pairs={skipped_pairs} elapsed={elapsed:.1f}s"
-                    )
+                        elapsed = time.time() - started
+                        print(
+                            f"[{idx}/{len(work)}][{model_name}] generated_pairs={generated_pairs} "
+                            f"failed_pairs={failed_pairs} skipped_pairs={skipped_pairs} elapsed={elapsed:.1f}s"
+                        )
 
                 del tok, mdl
     finally:
