@@ -1,2 +1,0 @@
-\contentsline {table}{\numberline {1}{\ignorespaces Best saved binary configuration for each LLM model, ranked by mean F1-score.}}{13}{table.1}%
-\contentsline {table}{\numberline {2}{\ignorespaces Mean semantic-overlap scores by model. METEOR is a simplified in-project implementation rather than the official toolkit version.}}{16}{table.2}%
